@@ -158,7 +158,11 @@ function session(options) {
   store.generate = function(req){
     req.sessionID = generateId(req);
     req.session = new Session(req);
-    req.session.cookie = new Cookie(cookieOptions);
+    var cookieOptionsObject;
+    if (typeof cookieOptions == 'function') {
+      cookieOptionsObject = cookieOptions(req)
+    }
+    req.session.cookie = new Cookie(cookieOptionsObject || cookieOptions);
 
     if (cookieOptions.secure === 'auto') {
       req.session.cookie.secure = issecure(req, trustProxy);
@@ -193,7 +197,12 @@ function session(options) {
 
     // pathname mismatch
     var originalPath = parseUrl.original(req).pathname || '/'
-    if (originalPath.indexOf(cookieOptions.path || '/') !== 0) return next();
+    var cookieOptionsObject
+    if (typeof cookieOptions == 'function') {
+      cookieOptionsObject = cookieOptions(req)
+    }
+    if (originalPath.indexOf((cookieOptionsObject || cookieOptions).path || '/') !== 0) return next();
+
 
     // ensure a secret is available or bail
     if (!secret && !req.secret) {
@@ -214,7 +223,11 @@ function session(options) {
     req.sessionStore = store;
 
     // get the session ID from the cookie
-    var cookieId = req.sessionID = getcookie(req, name, secrets);
+    var nameString
+    if (typeof name == 'function') {
+      nameString = name(req)
+    }
+    var cookieId = (req.sessionID = getcookie(req, nameString || name, secrets))
 
     // set-cookie
     onHeaders(res, function(){
@@ -240,7 +253,11 @@ function session(options) {
       }
 
       // set cookie
-      setcookie(res, name, req.sessionID, secrets[0], req.session.cookie.data);
+      var nameString
+      if (typeof name == 'function') {
+        nameString = name(req)
+      }
+      setcookie(res, nameString || name, req.sessionID, secrets[0], req.session.cookie.data)
     });
 
     // proxy end() to commit the session
